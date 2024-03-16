@@ -21,6 +21,11 @@ def descartes(c1, c2, c3) -> float: # This returns the bend of the fourth circle
 
 
 def z4(c1, c2, c3, k4): # Returns the position of the circle thing (aka z4) (k4 must be first calculated with the descartes function)
+	
+	# You should pass both values of the bend of the last circle to this function
+	assert isinstance(k4, list)
+	assert len(k4) == 2
+
 	k1 = c1.bend
 	k2 = c2.bend
 	k3 = c3.bend
@@ -45,7 +50,22 @@ def z4(c1, c2, c3, k4): # Returns the position of the circle thing (aka z4) (k4 
 	dividend2 = (z1*k1 + z2*k2 + z3*k3) - root_thing
 	print("dividend1 == "+str(dividend1))
 	print("dividend2 == "+str(dividend2))
-	return [dividend1 / k4, dividend2 / k4]
+
+	# Instead of returning the centers, let's just generate the circles here.
+	#return [dividend1 / k4[0], dividend2 / k4[0], dividend1 / k4[1], dividend2 / k4[1]]
+
+	centers = [dividend1 / k4[0], dividend2 / k4[0], dividend1 / k4[1], dividend2 / k4[1]]
+
+	for i, cent in enumerate(centers):
+		print("centers["+str(i)+"] == "+str(centers[i]))
+
+	circ1 = Circle(centers[0].real, centers[0].imag, k4[0])
+	circ2 = Circle(centers[1].real, centers[1].imag, k4[0])
+	circ3 = Circle(centers[2].real, centers[2].imag, k4[1])
+	circ4 = Circle(centers[3].real, centers[3].imag, k4[1])
+
+	return [circ1, circ2, circ3, circ4]
+
 
 SCALEFACTOR = 1
 
@@ -69,6 +89,29 @@ def render_circle(circle) -> None: # Shows one singular circle
 
 	return
 
+EPSILON = 0.2
+
+def validate(c4, c1, c2, c3, all_circles) -> bool: # Validates a circle thing.
+	print("Checking shit!!!")
+	if c4.radius < 2:
+		print("Fuck!!")
+		return False
+	for other in all_circles:
+		d = c4.get_center_to_center_distance(other)
+		radiusDiff = abs(c4.radius - other.radius)
+		if d < EPSILON and radiusDiff < EPSILON:
+			print("Fuckkkkk!!!!")
+			return False
+	# Check tangents.
+	if not c4.is_tangent_with(c1):
+		return False
+	if not c4.is_tangent_with(c2):
+		return False
+	if not c4.is_tangent_with(c3):
+		return False
+	print("Passed tests!!!!")
+	return True
+
 def main() -> int:
 	# Try to calculate z4 for circles.
 	# __init__(self, x0, y0, bend)
@@ -88,27 +131,84 @@ def main() -> int:
 	print("k4 == "+str(k4))
 	k4 = k4[1]
 
-	center_fourth = z4(c1, c2, c3, k4)
+	#center_fourth = z4(c1, c2, c3, k4)
 	#print(center_fourth[0])
-	center_fourth = center_fourth[0] # Get the first element
-	print("center_fourth == "+str(center_fourth))
-	x0 = center_fourth.real
-	y0 = center_fourth.imag
+	#center_fourth = center_fourth[0] # Get the first element
+	#print("center_fourth == "+str(center_fourth))
+	#x0 = center_fourth.real
+	#y0 = center_fourth.imag
 	# k4 is the curvature, therefore get the radius
-	radius = abs(1/k4)
-	print("radius == "+str(radius))
-	fourth_circle = Circle(x0, y0, k4)
+	#radius = abs(1/k4)
+	#print("radius == "+str(radius))
 
-	
+
+	all_circles = [c1,c2,c3] # List of all of the generated circles.
+	queue = [[c1,c2,c3]] # This queue is all of the circle triplets I think
+	#fourth_circle = Circle(x0, y0, k4)
+
+	MAX_COUNT = 100000000
+	counter = 0
 	while True:
-		render_circle(c1)
-		render_circle(c2)
-		render_circle(c3)
-		render_circle(fourth_circle)
+
+		# Here we probably want to add an infinite loop.
+
+		if counter == MAX_COUNT:
+			break
+
+
+		counter += 1
+
+		# First render all of the circles.
+
+		for circ in all_circles:
+			render_circle(circ)
+		
+		#input()
+		# Now generate new circle triplets maybe??
+		new_queue = [] # We will assign "queue" to this later on.
+		for triplet in queue:
+			c1,c2,c3 = triplet # Get the circles.
+			k4 = descartes(c1, c2, c3)
+			#print("k4 == "+str(k4))
+			#k4 = k4[1]
+			#radius_new = abs( 1 / k4 ) # Get the radius
+			newCircles = z4(c1, c2, c3, k4)
+
+			# Now generate new circles.
+			# fourth_circle = Circle(x0, y0, k4)
+			# Construct the new circles.
+			#newCircles = [Circle(new_circle_centers[0].real, new_circle_centers[0].imag, k4[1]), Circle(new_circle_centers[1].real, new_circle_centers[1].imag, k4[1])]
+
+			# Now append the new circles to the total circles list and then generate the new triplets.
+
+			for new_circle in newCircles: # Loop through the generated circles.
+				# Validate the circle shit.
+				# validate(c4, c1, c2, c3, all_circles)
+				if validate(new_circle, c1, c2, c3, all_circles):
+
+					all_circles.append(new_circle)
+
+					t1 = [c1, c2, new_circle]
+					t2 = [c1, c3, new_circle]
+					t3 = [c2, c3, new_circle]
+
+					new_queue += [t1,t2,t3] # Append the triplets to the next queue.
+
+		# Now the new queue is the queue for the next round
+
+		queue = new_queue
+
+		#render_circle(c1)
+		#render_circle(c2)
+		#render_circle(c3)
+		#render_circle(fourth_circle)
 		#turtle.goto(x0, y0)
 		#turtle.dot(100)
 		turtle.update()
-		turtle.clear()
+		#turtle.clear()
+	
+	# Try to get input from stdin, such that we do not exit.
+	input("Press enter to exit")
 
 	return 0
 
